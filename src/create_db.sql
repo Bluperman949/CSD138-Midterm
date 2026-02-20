@@ -61,7 +61,8 @@ CREATE TABLE products (
 CREATE VIEW products_readable AS SELECT
   product_id,
   concat(flavor_name,' (',item_weight,'lbs)') AS product_name,
-  item_weight
+  item_weight,
+  products.flavor_id
 FROM products JOIN flavors ON flavors.flavor_id = products.flavor_id;
 
 -- Stores (coffee shops) that have bought our product.
@@ -130,3 +131,36 @@ INSERT INTO flavors (price_per_lb, flavor_name) VALUES
   ( 9.49, 'Light Roast'),      -- "
   (11.99, 'Arabian Blend'),    -- From the Ethiopian farm
   (10.99, 'Cuban Dark Roast'); -- From the Cuban farm
+
+/*** Insert example products *************************************************/
+-- I couldn't figure out how to do this in one query. Apparently MySQL doesn't
+-- support the use of VALUES inside a WITH clause.
+-- I didn't want to inline the literal foreign keys, that seems a bad idea.
+
+INSERT INTO products (flavor_id, item_weight)
+SELECT flavors.flavor_id, inp.weight
+FROM flavors JOIN (
+  VALUES ROW(1), ROW(2), ROW(5), ROW(10) -- available bag sizes
+) AS inp(weight)
+WHERE flavor_name = 'Original Roast';
+
+INSERT INTO products (flavor_id, item_weight)
+SELECT flavors.flavor_id, inp.weight
+FROM flavors JOIN (
+  VALUES ROW(2), ROW(5), ROW(10)
+) AS inp(weight)
+WHERE flavor_name = 'Light Roast';
+
+INSERT INTO products (flavor_id, item_weight)
+SELECT flavors.flavor_id, inp.weight
+FROM flavors JOIN (
+  VALUES ROW(1), ROW(5), ROW(10)
+) AS inp(weight)
+WHERE flavor_name = 'Arabian Blend';
+
+INSERT INTO products (flavor_id, item_weight)
+SELECT flavors.flavor_id, inp.weight
+FROM flavors JOIN (
+  VALUES ROW(5)
+) AS inp(weight)
+WHERE flavor_name = 'Cuban Dark Roast';
