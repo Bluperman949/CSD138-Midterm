@@ -23,7 +23,7 @@ CREATE TABLE farms (
 CREATE TABLE flavors (
   flavor_id    INT          PRIMARY KEY AUTO_INCREMENT,
   flavor_name  VARCHAR(32)  NOT NULL UNIQUE,
-  price_per_lb DECIMAL(3,2) NOT NULL
+  price_per_lb DECIMAL(5,2) NOT NULL
 );
 
 -- How much of each type of coffee we have in stock. This should be read by an
@@ -49,7 +49,7 @@ CREATE TABLE inventory (
 CREATE TABLE products (
   product_id   INT          PRIMARY KEY AUTO_INCREMENT,
   product_name VARCHAR(64)  NOT NULL, -- TODO: auto-generate this name
-  item_weight  DECIMAL(2,2) NOT NULL,
+  item_weight  DECIMAL(4,2) NOT NULL,
 
   flavor_id    INT          NOT NULL,
 
@@ -78,7 +78,7 @@ CREATE TABLE orders (
 
   -- How much did they pay?
   amount       DECIMAL(10,2) NOT NULL,
-  tax_percent  DECIMAL(3,2),
+  tax_percent  DECIMAL(5,2),
   -- TODO: generate amount_total column with tax included
 
   -- How many items were in this order? (orders can only contain one product)
