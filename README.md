@@ -51,7 +51,16 @@ Lastly, the holy grail of the project: the `orders` table. This represents
 orders made by clients. Understandably, it depends on basically every other
 table in the database.
 
-Because it represents 
+Because it represents orders made in the past as well as ongoing orders, there
+are two dates and a boolean to keep track of its status: When the order was
+received, when we shipped the order (NULL if not yet shipped), and whether the
+client received the package.
+
+Orders can only have one product, unfortunately. If the client's cart had
+multiple products at checkout, our database would probably track each product
+as its own order. Realistically, we should have another table to keep track of
+shipping status instead of bundling it all into `orders`, but that was outside
+the scope of this project.
 
 ## Who did what
 
