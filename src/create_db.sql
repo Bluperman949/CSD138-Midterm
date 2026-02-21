@@ -174,9 +174,10 @@ INSERT INTO flavors (price_per_lb, flavor_name) VALUES
   ( 9.99, 'Morning Decaf'),
   (12.99, 'Holiday Spice');
 
-/*** Insert example products *************************************************/
--- I couldn't figure out how to do this in one query. Apparently MySQL doesn't
--- support the use of VALUES inside a WITH clause.
+/*** Insert example state data ***********************************************/
+
+-- I couldn't figure out how to do this part in one query. Apparently MySQL
+-- doesn't support the use of VALUES inside a WITH clause.
 -- I didn't want to inline the literal foreign keys, that seems a bad idea.
 
 INSERT INTO products (flavor_id, item_weight)
@@ -260,8 +261,8 @@ INSERT INTO inventory (flavor_id, farm_id, lbs_available) VALUES
   (7, 8, 130.00),
   (8, 9,  75.00),
   (9, 1, 200.00),
-  (10, 2,  95.00),
-  (7, 10, 105.00);
+  (10,2,  95.00),
+  (7,10, 105.00);
 
 INSERT INTO orders (order_date, ship_date, received, amount, tax_percent, item_count, client_id, product_id) VALUES
   ('2026-01-10 10:00:00', '2026-01-12 10:00:00', true,  17.98,  9.50, 2,
@@ -305,6 +306,8 @@ INSERT INTO orders (order_date, ship_date, received, amount, tax_percent, item_c
     (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Holiday Spice' LIMIT 1) AND item_weight = 1.00 LIMIT 1)
   );
 
+/*** Display finished tables *************************************************/
+ 
 SELECT COUNT(*) FROM farms;
 SELECT * FROM farms;
 
