@@ -60,13 +60,13 @@ create table products (
 );
 
 -- I couldn't auto-generate a readable product_name, so I made a view for it
-create view products_readable as
+create view vw_products_readable as
 select product_id
      , concat(flavor_name, ' (', item_weight, 'lbs)') as product_name
      , item_weight
      , products.flavor_id
-from products
-join flavors on flavors.flavor_id = products.flavor_id
+  from products
+  join flavors on flavors.flavor_id = products.flavor_id
 ;
 
 -- Stores (coffee shops) that have bought our product.
@@ -242,13 +242,25 @@ TODO:
 /***
 TODO:
   Programming Problem - Updatable Single Table View
-  [ ] must include a `select` or `where` clause
-  [ ] NO using `check option`
+  [X] must include a `select` or `where` clause
+  [X] NO using `check option`
   [ ] have the following steps:
       1. `select` from the view
       2. update a record that satisfies a `where` clause
       3. `select` from the view again to show changes
 ***/
+
+create view vw_inventory_in_stock as
+select inventory_id
+     , flavor_id
+     , farm_id
+     , lbs_available
+  from inventory
+ where lbs_available > 0
+;
+
+-- print everything out before we update the view
+select * from vw_inventory_in_stock;
 
 /***
 TODO:
