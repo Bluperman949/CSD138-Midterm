@@ -64,6 +64,8 @@ the scope of this project.
 
 ## Who did what
 
+### For the Midterm
+
 The SQL script itself (`create_db.sql`) was written by Christian and Aadesh.
 Christian created the database layout and inserted static data and example
 products. Aadesh inserted all of the test data after the products (so,
@@ -74,6 +76,10 @@ number of tests to verify constraints and integrity.
 The idea for our business was brainstormed by Aadesh and Kirtis. Christian
 designed the structure and purpose of the database. The .mwb file was compiled
 by Aadesh.
+
+### For the Final
+
+{TODO}
 
 ## Public data
 
