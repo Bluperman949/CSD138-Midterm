@@ -231,7 +231,7 @@ select * from orders;
 TODO:
   Programming Problem - Indexes
   Must be first so the indices are available to all subsequent queries.
-  [ ] Indexes for all tables
+  [ ] Indexes for columns used in joins and search conditions
 ***/
 
 /***
