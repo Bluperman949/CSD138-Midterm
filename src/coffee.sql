@@ -240,27 +240,39 @@ TODO:
 ***/
 
 /***
-TODO:
   Programming Problem - Updatable Single Table View
   [X] must include a `select` or `where` clause
   [X] NO using `check option`
-  [ ] have the following steps:
+  [X] have the following steps:
       1. `select` from the view
       2. update a record that satisfies a `where` clause
       3. `select` from the view again to show changes
 ***/
 
-create view vw_inventory_in_stock as
+create view vw_inventory_by_name as
 select inventory_id
      , flavor_id
+     , flavor_name
      , farm_id
+     , farm_name
      , lbs_available
   from inventory
+  join farms using (farm_id)
+  join flavors using (flavor_id)
  where lbs_available > 0
 ;
 
--- print everything out before we update the view
-select * from vw_inventory_in_stock;
+select * from vw_inventory_by_name;
+
+-- changes lbs_available of inventory_id 1 from 250.00 to 220.00
+update vw_inventory_by_name
+   set lbs_available = lbs_available - 30
+ where farm_name = 'Fazenda Sol do Cerrado'
+   and flavor_name = 'Original Roast'
+;
+
+select * from vw_inventory_by_name;
+
 
 /***
 TODO:
