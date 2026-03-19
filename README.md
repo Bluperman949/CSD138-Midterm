@@ -79,7 +79,26 @@ by Aadesh.
 
 ### For the Final
 
-{TODO}
+Kirtis managed the project timeline and coordinated task assignments between
+team members. He wrote the project documentation, created the indexes on join
+conditions and WHERE clause columns, and developed the Evaluate & Synthesize
+analytical query using GROUP BY with ROLLUP. Kirtis also handled the final
+submission to the GitHub repo.
+
+Christian built the subquery that retrieves orders for a specific client
+without hardcoding the client_id. He also continued refining the database
+design from the midterm, adding an additional order record that uses DEFAULT
+values to address midterm feedback.
+
+Aadesh developed the stored procedure (`sp_calculate_client_revenue`) which
+uses a cursor and loop to iterate through clients, calculates total revenue
+from received orders, and classifies each client as High Value or Standard
+using IF logic. He also wrote the stored function (`fn_calculate_order_total`)
+that calculates the total cost of an order including tax, handling NULL tax
+values with an IF statement. Aadesh created the updatable single table view
+(`vw_premium_flavors`) on the flavors table, and performed the backup and
+restore of the database. The updated .mwb ERD file was also compiled by Aadesh.
+
 
 ## Public data
 
