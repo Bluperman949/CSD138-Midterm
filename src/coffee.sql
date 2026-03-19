@@ -229,15 +229,26 @@ select * from orders;
 
 /***
 TODO:
-  Programming Problem - Indexes (sic)
+  Programming Problem - Indexes
   Must be first so the indices are available to all subsequent queries.
+  [ ] Indexes for all tables
 ***/
 
 /***
 TODO:
   Programming Problem - Subquery
-  [ ] just use a subquery, requirements are pretty much "do whatever"
+  [X] just use a subquery, requirements are pretty much "do whatever"
 ***/
+
+-- Get orders from Downpour without knowing client_id
+select *
+  from orders
+ where client_id = (
+         select client_id
+           from clients
+          where client_name = 'Downpour Coffee and Sandwich Bar'
+       )
+;
 
 /***
   Programming Problem - Updatable Single Table View
