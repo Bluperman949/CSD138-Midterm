@@ -1,327 +1,224 @@
 /******************************************************************************
-* create_db.sql
+* coffee.sql
 *
 * Authors: Christian Doolittle, Aadesh Kumar
 * Description:
 *   This script creates the database for our coffee bean company.
+*   It also runs a number of tests and functions required by the assignment.
 ******************************************************************************/
 
-DROP DATABASE IF EXISTS coffee;
-CREATE DATABASE coffee;
-USE coffee;
+drop database if exists coffee;
+create database coffee;
+use coffee;
 
 /*** Create tables ***********************************************************/
 
 -- The farms we source our coffee from.
-CREATE TABLE farms (
-  farm_id      INT          NOT NULL AUTO_INCREMENT,
-  farm_name    VARCHAR(64)  NOT NULL,
-  address      VARCHAR(256) NOT NULL,
-  country      VARCHAR(32)  NOT NULL,
-
-  CONSTRAINT PK_farms
-    PRIMARY KEY (farm_id),
-  CONSTRAINT UQ_farms_farm_name
-    UNIQUE (farm_name)
+create table farms (
+       farm_id   int          not null auto_increment
+     , farm_name varchar(64)  not null
+     , address   varchar(256) not null
+     , country   varchar(32)  not null
+     , constraint pk_farms           primary key (farm_id)
+     , constraint uq_farms_farm_name unique (farm_name)
 );
 
 -- The types of coffee we sell.
-CREATE TABLE flavors (
-  flavor_id    INT          NOT NULL AUTO_INCREMENT,
-  flavor_name  VARCHAR(32)  NOT NULL,
-  price_per_lb DECIMAL(5,2) NOT NULL,
-
-  CONSTRAINT PK_flavors
-    PRIMARY KEY (flavor_id),
-  CONSTRAINT UQ_flavors_flavor_name
-    UNIQUE (flavor_name)
+create table flavors (
+       flavor_id    int          not null auto_increment
+     , flavor_name  varchar(32)  not null
+     , price_per_lb decimal(5,2) not null
+     , constraint pk_flavors             primary key (flavor_id)
+     , constraint uq_flavors_flavor_name unique (flavor_name)
 );
 
 -- How much of each type of coffee we have in stock. This should be read by an
 -- intermediate service to determine whether orders can be made on our
 -- frontend.
 -- Each item in this list represents stock of a given flavor from a given farm.
-CREATE TABLE inventory (
-  inventory_id  INT           NOT NULL AUTO_INCREMENT,
-  flavor_id     INT           NOT NULL,
-  farm_id       INT           NOT NULL,
-  lbs_available DECIMAL(10,2) NOT NULL,
-
-  CONSTRAINT PK_inventory
-    PRIMARY KEY (inventory_id),
-  CONSTRAINT FK_inventory_flavors
-    FOREIGN KEY (flavor_id) REFERENCES flavors (flavor_id),
-  CONSTRAINT FK_inventory_farms
-    FOREIGN KEY (farm_id) REFERENCES farms (farm_id),
-  -- Stock is identified by a *combination* of farm and flavor, no primary key.
-  CONSTRAINT UQ_inventory
-    UNIQUE (flavor_id, farm_id)
+create table inventory (
+       inventory_id  int           not null auto_increment
+     , flavor_id     int           not null
+     , farm_id       int           not null
+     , lbs_available decimal(10,2) not null
+     , constraint pk_inventory         primary key (inventory_id)
+     , constraint fk_inventory_flavors foreign key (flavor_id) references flavors (flavor_id)
+     , constraint fk_inventory_farms   foreign key (farm_id)   references farms   (farm_id)
+     , constraint uq_inventory         unique (flavor_id, farm_id)
 );
 
 -- The actual items to be listed on our frontend.
 -- Each item is just a flavor with a weight - we're selling bags of beans.
-CREATE TABLE products (
-  product_id   INT          NOT NULL AUTO_INCREMENT,
-  item_weight  DECIMAL(4,2) NOT NULL,
-
-  flavor_id    INT          NOT NULL,
-
-  CONSTRAINT PK_products
-    PRIMARY KEY (product_id),
-  CONSTRAINT FK_products_flavors
-    FOREIGN KEY (flavor_id) REFERENCES flavors (flavor_id)
+create table products (
+       product_id  int          not null auto_increment
+     , item_weight decimal(4,2) not null
+     , flavor_id   int          not null
+     , constraint pk_products         primary key (product_id)
+     , constraint fk_products_flavors foreign key (flavor_id) references flavors (flavor_id)
 );
 
 -- I couldn't auto-generate a readable product_name, so I made a view for it
-CREATE VIEW products_readable AS SELECT
-  product_id,
-  concat(flavor_name,' (',item_weight,'lbs)') AS product_name,
-  item_weight,
-  products.flavor_id
-FROM products JOIN flavors ON flavors.flavor_id = products.flavor_id;
+create view products_readable as
+select product_id
+     , concat(flavor_name, ' (', item_weight, 'lbs)') as product_name
+     , item_weight
+     , products.flavor_id
+from products
+join flavors on flavors.flavor_id = products.flavor_id
+;
 
 -- Stores (coffee shops) that have bought our product.
-CREATE TABLE clients (
-  client_id    INT          NOT NULL AUTO_INCREMENT,
-  client_name  VARCHAR(64)  NOT NULL,
-  ship_address VARCHAR(256) NOT NULL,
-
-  CONSTRAINT PK_clients
-    PRIMARY KEY (client_id),
-  CONSTRAINT UQ_clients_client_name
-    UNIQUE (client_name),
-  CONSTRAINT UQ_clients_ship_address
-    UNIQUE (ship_address)
+create table clients (
+       client_id    int          not null auto_increment
+     , client_name  varchar(64)  not null
+     , ship_address varchar(256) not null
+     , constraint pk_clients              primary key (client_id)
+     , constraint uq_clients_client_name  unique (client_name)
+     , constraint uq_clients_ship_address unique (ship_address)
 );
 
 -- All orders, fulfilled and unfulfilled.
 -- TODO: Fill this table with fake data for testing.
-CREATE TABLE orders (
-  order_id     INT           NOT NULL AUTO_INCREMENT,
-
-  -- When was this order placed?
-  order_date   DATETIME      NOT NULL,
-  -- When did we ship it to the client?
-  ship_date    DATETIME,
-  -- Has the order made it to the client? (for selecting "active" orders only)
-  received     BOOLEAN       NOT NULL DEFAULT false,
-
-  -- How much did they pay?
-  amount       DECIMAL(10,2) NOT NULL,
-  tax_percent  DECIMAL(5,2),
-  -- TODO: generate amount_total column with tax included
-
-  -- How many items were in this order? (orders can only contain one product)
-  item_count   INT           NOT NULL DEFAULT 1,
-
-  client_id    INT           NOT NULL,
-  product_id   INT           NOT NULL,
-
-  CONSTRAINT PK_orders
-    PRIMARY KEY (order_id),
-  CONSTRAINT FK_orders_clients
-    FOREIGN KEY (client_id) REFERENCES clients (client_id),
-  CONSTRAINT FK_orders_products
-    FOREIGN KEY (product_id) REFERENCES products (product_id),
-
-  -- Disallow impossible ship times - we can't ship *that* fast
-  CONSTRAINT CK_orders_dates
-    CHECK (ship_date IS null OR order_date < ship_date),
-  -- Disallow receiving orders that haven't been shipped
-  CONSTRAINT CK_orders_received_ship_date
-    CHECK (NOT (received AND ship_date IS null))
+create table orders (
+       order_id    int           not null auto_increment
+     , order_date  datetime      not null
+     , ship_date   datetime
+     , received    boolean       not null default false
+     , amount      decimal(10,2) not null
+     , tax_percent decimal(5,2)
+     , item_count  int           not null default 1
+     , client_id   int           not null
+     , product_id  int           not null
+     , constraint pk_orders          primary key (order_id)
+     , constraint fk_orders_clients  foreign key (client_id)  references clients  (client_id)
+     , constraint fk_orders_products foreign key (product_id) references products (product_id)
+     , constraint ck_orders_dates              check (ship_date is null or order_date < ship_date)
+     , constraint ck_orders_received_ship_date check (not (received and ship_date is null))
 );
 
 /*** Insert static data ******************************************************/
 
 -- Fake farm names and addresses generated by ChatGPT
 -- Now *this* is what LLMs are actually good for - making stuff up
-INSERT INTO farms (farm_name, country, address) VALUES
-  ('Fazenda Sol do Cerrado', 'Brazil', 'Rodovia MG-188, Km 42, Zona Rural, Patrocínio, Minas Gerais, Brazil, 38740-000'),
-  ('Santa Aurora Coffee Estate', 'Brazil', 'Estrada da Serra Azul, s/n, Distrito de São Pedro, Carmo de Minas, Minas Gerais, Brazil, 37472-000'),
-  ('Vale Verde do Sul Café', 'Brazil', 'Linha Boa Esperança, 2150, Interior, Venda Nova do Imigrante, Espírito Santo, Brazil, 29375-000'),
-  ('Abeba Highlands Coffee Garden', 'Ethiopia', 'Kebele 04, Gedeb Road, Gedeo Zone, Yirgacheffe, Ethiopia, 00100'),
-  ('Finca Sierra de Bruma', 'Cuba', 'Camino El Naranjal, Km 6, Sierra Maestra, Buey Arriba, Granma Province, Cuba'),
-  ('Kilimani Ridge Cooperative', 'Kenya', 'Kiambu County, Gatundu South, Kenya'),
-  ('Sumatra Highlands Mill', 'Indonesia', 'Lintong Nihuta, Humbang Hasundutan, North Sumatra, Indonesia'),
-  ('Antigua Valley Estate', 'Guatemala', 'Antigua Guatemala, Sacatepéquez, Guatemala'),
-  ('Blue Mountain Terrace', 'Jamaica', 'Portland Parish, Blue Mountains, Jamaica'),
-  ('Huehuetenango Cloud Farm', 'Guatemala', 'La Democracia, Huehuetenango, Guatemala');
+insert into farms (farm_name, country, address)
+values ('Fazenda Sol do Cerrado'       , 'Brazil'   , 'Rodovia MG-188, Km 42, Zona Rural, Patrocínio, Minas Gerais, Brazil, 38740-000')
+     , ('Santa Aurora Coffee Estate'   , 'Brazil'   , 'Estrada da Serra Azul, s/n, Distrito de São Pedro, Carmo de Minas, Minas Gerais, Brazil, 37472-000')
+     , ('Vale Verde do Sul Café'       , 'Brazil'   , 'Linha Boa Esperança, 2150, Interior, Venda Nova do Imigrante, Espírito Santo, Brazil, 29375-000')
+     , ('Abeba Highlands Coffee Garden', 'Ethiopia' , 'Kebele 04, Gedeb Road, Gedeo Zone, Yirgacheffe, Ethiopia, 00100')
+     , ('Finca Sierra de Bruma'        , 'Cuba'     , 'Camino El Naranjal, Km 6, Sierra Maestra, Buey Arriba, Granma Province, Cuba')
+     , ('Kilimani Ridge Cooperative'   , 'Kenya'    , 'Kiambu County, Gatundu South, Kenya')
+     , ('Sumatra Highlands Mill'       , 'Indonesia', 'Lintong Nihuta, Humbang Hasundutan, North Sumatra, Indonesia')
+     , ('Antigua Valley Estate'        , 'Guatemala', 'Antigua Guatemala, Sacatepéquez, Guatemala')
+     , ('Blue Mountain Terrace'        , 'Jamaica'  , 'Portland Parish, Blue Mountains, Jamaica')
+     , ('Huehuetenango Cloud Farm'     , 'Guatemala', 'La Democracia, Huehuetenango, Guatemala')
+;
 
 -- Real coffee shops in Kirkland and Redmond
-INSERT INTO clients (client_name, ship_address) VALUES
-  ('5 Stones Coffee Co.', '8102 161st Avenue Northeast, Redmond, WA 98052'),
-  ('Rose Hill Café', '12633 NE 85th St, Kirkland, WA 98033'),
-  ('Downpour Coffee and Sandwich Bar', '13200 Old Redmond Rd #150, Redmond, WA 98052'),
-  ('Kirkland Roasters', '11720 100th Ave NE, Kirkland, WA 98034'),
-  ('Redmond Bean Lab', '16705 Redmond Way, Redmond, WA 98052'),
-  ('Totem Lake Espresso', '12520 120th Ave NE, Kirkland, WA 98034'),
-  ('Lakeview Coffee Stand', '15 Lake St S, Kirkland, WA 98033'),
-  ('Cedar Park Café', '12300 NE 8th St, Bellevue, WA 98005'),
-  ('Downtown Pourhouse', '7525 166th Ave NE, Redmond, WA 98052'),
-  ('Union Hill Coffee', '21405 NE Union Hill Rd, Redmond, WA 98053');
+insert into clients (client_name, ship_address)
+values ('5 Stones Coffee Co.'             , '8102 161st Avenue Northeast, Redmond, WA 98052')
+     , ('Rose Hill Café'                  , '12633 NE 85th St, Kirkland, WA 98033'          )
+     , ('Downpour Coffee and Sandwich Bar', '13200 Old Redmond Rd #150, Redmond, WA 98052'  )
+     , ('Kirkland Roasters'               , '11720 100th Ave NE, Kirkland, WA 98034'        )
+     , ('Redmond Bean Lab'                , '16705 Redmond Way, Redmond, WA 98052'          )
+     , ('Totem Lake Espresso'             , '12520 120th Ave NE, Kirkland, WA 98034'        )
+     , ('Lakeview Coffee Stand'           , '15 Lake St S, Kirkland, WA 98033'              )
+     , ('Cedar Park Café'                 , '12300 NE 8th St, Bellevue, WA 98005'           )
+     , ('Downtown Pourhouse'              , '7525 166th Ave NE, Redmond, WA 98052'          )
+     , ('Union Hill Coffee'               , '21405 NE Union Hill Rd, Redmond, WA 98053'     )
+;
 
--- Made up by me (Christian)
-INSERT INTO flavors (price_per_lb, flavor_name) VALUES
-  ( 8.99, 'Original Roast'),   -- From any Brazil farm
-  ( 9.49, 'Light Roast'),      -- "
-  (11.99, 'Arabian Blend'),    -- From the Ethiopian farm
-  (10.99, 'Cuban Dark Roast'), -- From the Cuban farm
-  (12.49, 'Kenyan Bright'),
-  (11.49, 'Sumatra Earthy'),
-  (10.49, 'Guatemala Cocoa'),
-  (13.99, 'Blue Mountain'),
-  ( 9.99, 'Morning Decaf'),
-  (12.99, 'Holiday Spice');
+-- Made up by Christian and Aadesh
+insert into flavors (price_per_lb, flavor_name)
+values ( 8.99, 'Original Roast'  )
+     , ( 9.49, 'Light Roast'     )
+     , (11.99, 'Arabian Blend'   )
+     , (10.99, 'Cuban Dark Roast')
+     , (12.49, 'Kenyan Bright'   )
+     , (11.49, 'Sumatra Earthy'  )
+     , (10.49, 'Guatemala Cocoa' )
+     , (13.99, 'Blue Mountain'   )
+     , ( 9.99, 'Morning Decaf'   )
+     , (12.99, 'Holiday Spice'   )
+;
 
 /*** Insert example state data ***********************************************/
 
--- I couldn't figure out how to do this part in one query. Apparently MySQL
--- doesn't support the use of VALUES inside a WITH clause.
--- I didn't want to inline the literal foreign keys, that seems a bad idea.
+insert into products (flavor_id, item_weight)
+values ( 1,  1.00)
+     , ( 1,  2.00)
+     , ( 1,  5.00)
+     , ( 1, 10.00)
+     , ( 2,  2.00)
+     , ( 2,  5.00)
+     , ( 2, 10.00)
+     , ( 3,  1.00)
+     , ( 3,  5.00)
+     , ( 3, 10.00)
+     , ( 4,  5.00)
+     , ( 5,  1.00)
+     , ( 5,  2.00)
+     , ( 5,  5.00)
+     , ( 6,  1.00)
+     , ( 6,  2.00)
+     , ( 6,  5.00)
+     , ( 7,  1.00)
+     , ( 7,  2.00)
+     , ( 7,  5.00)
+     , ( 8,  1.00)
+     , ( 8,  2.00)
+     , ( 8,  5.00)
+     , ( 9,  1.00)
+     , ( 9,  2.00)
+     , ( 9,  5.00)
+     , (10,  1.00)
+     , (10,  2.00)
+     , (10,  5.00)
+;
 
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 1.00 AS weight UNION ALL SELECT 2.00 UNION ALL SELECT 5.00 UNION ALL SELECT 10.00
-) AS inp
-WHERE flavor_name = 'Original Roast';
+insert into inventory (flavor_id, farm_id, lbs_available)
+values (1 , 1 , 250.00)
+     , (1 , 2 , 180.00)
+     , (2 , 3 , 140.00)
+     , (3 , 4 , 120.00)
+     , (4 , 5 ,  90.00)
+     , (5 , 6 , 110.00)
+     , (6 , 7 , 160.00)
+     , (7 , 8 , 130.00)
+     , (8 , 9 ,  75.00)
+     , (9 , 1 , 200.00)
+     , (10, 2 ,  95.00)
+     , (7 , 10, 105.00)
+;
 
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 2.00 AS weight UNION ALL SELECT 5.00 UNION ALL SELECT 10.00
-) AS inp
-WHERE flavor_name = 'Light Roast';
-
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 1.00 AS weight UNION ALL SELECT 5.00 UNION ALL SELECT 10.00
-) AS inp
-WHERE flavor_name = 'Arabian Blend';
-
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 5.00 AS weight
-) AS inp
-WHERE flavor_name = 'Cuban Dark Roast';
-
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 1.00 AS weight UNION ALL SELECT 2.00 UNION ALL SELECT 5.00
-) AS inp
-WHERE flavor_name = 'Kenyan Bright';
-
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 1.00 AS weight UNION ALL SELECT 2.00 UNION ALL SELECT 5.00
-) AS inp
-WHERE flavor_name = 'Sumatra Earthy';
-
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 1.00 AS weight UNION ALL SELECT 2.00 UNION ALL SELECT 5.00
-) AS inp
-WHERE flavor_name = 'Guatemala Cocoa';
-
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 1.00 AS weight UNION ALL SELECT 2.00 UNION ALL SELECT 5.00
-) AS inp
-WHERE flavor_name = 'Blue Mountain';
-
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 1.00 AS weight UNION ALL SELECT 2.00 UNION ALL SELECT 5.00
-) AS inp
-WHERE flavor_name = 'Morning Decaf';
-
-INSERT INTO products (flavor_id, item_weight)
-SELECT flavors.flavor_id, inp.weight
-FROM flavors JOIN (
-  SELECT 1.00 AS weight UNION ALL SELECT 2.00 UNION ALL SELECT 5.00
-) AS inp
-WHERE flavor_name = 'Holiday Spice';
-
-INSERT INTO inventory (flavor_id, farm_id, lbs_available) VALUES
-  (1, 1, 250.00),
-  (1, 2, 180.00),
-  (2, 3, 140.00),
-  (3, 4, 120.00),
-  (4, 5,  90.00),
-  (5, 6, 110.00),
-  (6, 7, 160.00),
-  (7, 8, 130.00),
-  (8, 9,  75.00),
-  (9, 1, 200.00),
-  (10,2,  95.00),
-  (7,10, 105.00);
-
-INSERT INTO orders (order_date, ship_date, received, amount, tax_percent, item_count, client_id, product_id) VALUES
-  ('2026-01-10 10:00:00', '2026-01-12 10:00:00', true,  17.98,  9.50, 2,
-    (SELECT client_id FROM clients WHERE client_name = '5 Stones Coffee Co.' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Original Roast' LIMIT 1) AND item_weight = 1.00 LIMIT 1)
-  ),
-  ('2026-01-11 11:30:00', '2026-01-13 11:30:00', true,  47.45,  9.50, 5,
-    (SELECT client_id FROM clients WHERE client_name = 'Rose Hill Café' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Light Roast' LIMIT 1) AND item_weight = 2.00 LIMIT 1)
-  ),
-  ('2026-01-12 09:15:00', '2026-01-14 09:15:00', false, 59.95,  9.50, 5,
-    (SELECT client_id FROM clients WHERE client_name = 'Downpour Coffee and Sandwich Bar' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Arabian Blend' LIMIT 1) AND item_weight = 5.00 LIMIT 1)
-  ),
-  ('2026-01-13 14:20:00', '2026-01-16 14:20:00', true,  54.95,  9.50, 5,
-    (SELECT client_id FROM clients WHERE client_name = 'Kirkland Roasters' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Cuban Dark Roast' LIMIT 1) AND item_weight = 5.00 LIMIT 1)
-  ),
-  ('2026-01-14 08:05:00', '2026-01-16 08:05:00', false, 24.98,  9.50, 2,
-    (SELECT client_id FROM clients WHERE client_name = 'Redmond Bean Lab' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Kenyan Bright' LIMIT 1) AND item_weight = 1.00 LIMIT 1)
-  ),
-  ('2026-01-15 12:45:00', '2026-01-18 12:45:00', true,  22.98,  9.50, 2,
-    (SELECT client_id FROM clients WHERE client_name = 'Totem Lake Espresso' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Sumatra Earthy' LIMIT 1) AND item_weight = 1.00 LIMIT 1)
-  ),
-  ('2026-01-16 16:10:00', '2026-01-19 16:10:00', false, 20.98,  9.50, 2,
-    (SELECT client_id FROM clients WHERE client_name = 'Lakeview Coffee Stand' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Guatemala Cocoa' LIMIT 1) AND item_weight = 1.00 LIMIT 1)
-  ),
-  ('2026-01-17 10:55:00', '2026-01-20 10:55:00', true,  27.98,  9.50, 2,
-    (SELECT client_id FROM clients WHERE client_name = 'Cedar Park Café' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Blue Mountain' LIMIT 1) AND item_weight = 1.00 LIMIT 1)
-  ),
-  ('2026-01-18 09:40:00', '2026-01-21 09:40:00', false, 19.98,  9.50, 2,
-    (SELECT client_id FROM clients WHERE client_name = 'Downtown Pourhouse' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Morning Decaf' LIMIT 1) AND item_weight = 1.00 LIMIT 1)
-  ),
-  ('2026-01-19 13:25:00', '2026-01-22 13:25:00', true,  25.98,  9.50, 2,
-    (SELECT client_id FROM clients WHERE client_name = 'Union Hill Coffee' LIMIT 1),
-    (SELECT product_id FROM products WHERE flavor_id = (SELECT flavor_id FROM flavors WHERE flavor_name = 'Holiday Spice' LIMIT 1) AND item_weight = 1.00 LIMIT 1)
-  );
+insert into orders (order_date, ship_date, received, amount, tax_percent, item_count, client_id, product_id)
+values ('2026-01-10 10:00:00', '2026-01-12 10:00:00', true , 17.98, 9.50, 2,  1,  1)
+     , ('2026-01-11 11:30:00', '2026-01-13 11:30:00', true , 47.45, 9.50, 5,  2,  5)
+     , ('2026-01-12 09:15:00', '2026-01-14 09:15:00', false, 59.95, 9.50, 5,  3,  9)
+     , ('2026-01-13 14:20:00', '2026-01-16 14:20:00', true , 54.95, 9.50, 5,  4, 11)
+     , ('2026-01-14 08:05:00', '2026-01-16 08:05:00', false, 24.98, 9.50, 2,  5, 12)
+     , ('2026-01-15 12:45:00', '2026-01-18 12:45:00', true , 22.98, 9.50, 2,  6, 15)
+     , ('2026-01-16 16:10:00', '2026-01-19 16:10:00', false, 20.98, 9.50, 2,  7, 18)
+     , ('2026-01-17 10:55:00', '2026-01-20 10:55:00', true , 27.98, 9.50, 2,  8, 21)
+     , ('2026-01-18 09:40:00', '2026-01-21 09:40:00', false, 19.98, 9.50, 2,  9, 24)
+     , ('2026-01-19 13:25:00', '2026-01-22 13:25:00', true , 25.98, 9.50, 2, 10, 27)
+;
 
 /*** Display finished tables *************************************************/
  
-SELECT COUNT(*) FROM farms;
-SELECT * FROM farms;
+select count(*) from farms;
+select * from farms;
 
-SELECT COUNT(*) FROM flavors;
-SELECT * FROM flavors;
+select count(*) from flavors;
+select * from flavors;
 
-SELECT COUNT(*) FROM products;
-SELECT * FROM products;
+select count(*) from products;
+select * from products;
 
-SELECT COUNT(*) FROM clients;
-SELECT * FROM clients;
+select count(*) from clients;
+select * from clients;
 
-SELECT COUNT(*) FROM inventory;
-SELECT * FROM inventory;
+select count(*) from inventory;
+select * from inventory;
 
-SELECT COUNT(*) FROM orders;
-SELECT * FROM orders;
+select count(*) from orders;
+select * from orders;
