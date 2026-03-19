@@ -7,6 +7,8 @@
 *   It also runs a number of tests and functions required by the assignment.
 ******************************************************************************/
 
+/*** MIDTERM PROJECT SECTION *************************************************/
+
 drop database if exists coffee;
 create database coffee;
 use coffee;
@@ -222,3 +224,53 @@ select * from inventory;
 
 select count(*) from orders;
 select * from orders;
+
+/*** FINAL PROJECT SECTION ***************************************************/
+
+/***
+TODO:
+  Programming Problem - Indexes (sic)
+  Must be first so the indices are available to all subsequent queries.
+***/
+
+/***
+TODO:
+  Programming Problem - Subquery
+  [ ] just use a subquery, requirements are pretty much "do whatever"
+***/
+
+/***
+TODO:
+  Programming Problem - Updatable Single Table View
+  [ ] must include a `select` or `where` clause
+  [ ] NO using `check option`
+  [ ] have the following steps:
+      1. `select` from the view
+      2. update a record that satisfies a `where` clause
+      3. `select` from the view again to show changes
+***/
+
+/***
+TODO:
+  Programming Problem - Stored Procedure
+  [ ] must use: cursor, loop, `if` or `case`, `select`
+  [ ] must calculate and echo a value
+  [ ] use `call` to execute
+***/
+
+/***
+TODO:
+  Programming Problem - Stored Function
+  [ ] calculate and return a value
+  [ ] use `if` or `case`
+  [ ] use `select`
+***/
+
+/***
+TODO:
+  Problem - Evaluate and Synthesize Query
+
+  This seems weird. Just paste an entire assignment into the final? Unrelated?
+  It has its own DB and everything. We'll get to this once the final project
+  itself is complete.
+***/
